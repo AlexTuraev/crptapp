@@ -13,6 +13,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -23,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
 
 public class CrptApi {
     private final String CREATE_DOC_URL = "https://ismp.crpt.ru/api/v3/lk/documents/create";
@@ -40,7 +42,8 @@ public class CrptApi {
         this.localDateTime = LocalDateTime.now();
     }
 
-    public void createDoc(RootProductPojo rootProductPojo) throws IOException {
+
+    private void checkAndResetTimePeriod() {
         // Если прошло времени больше чем timeUnit, то сбрасываем начало периода localDateTime в now() и обнуляем кол-во запросов countRequests
         if ((Duration.between(localDateTime, LocalDateTime.now()).toNanos() - timeUnit.toNanos(1)) > 0) {
             try {
@@ -52,7 +55,14 @@ public class CrptApi {
             } catch (Exception e) {
             }
         }
+    }
+    @Scheduled(fixedRate = 1000)
+    public void scheduledResetTimePeriod() {
+        checkAndResetTimePeriod();
+    }
 
+    public void createDoc(RootProductPojo rootProductPojo) throws IOException {
+        checkAndResetTimePeriod();
         try {
             boolean ok = true;
             synchronized (lock) {
