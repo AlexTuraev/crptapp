@@ -3,10 +3,12 @@ package crtpapi.com.test.crptapp;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
+@EnableScheduling
 public class CrptappApplication {
 
 	public static void main(String[] args) {
