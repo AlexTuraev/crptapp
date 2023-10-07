@@ -15,21 +15,63 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class CrptApi {
     private final String CREATE_DOC_URL = "https://ismp.crpt.ru/api/v3/lk/documents/create";
-    //private final TimeUnit timeUnit;
+    private final TimeUnit timeUnit;
     private final int requestLimit;
-    public CrptApi(/*TimeUnit timeUnit,*/ int requestLimit) throws MalformedURLException {
-        //this.timeUnit = timeUnit;
+    private final Object lock = new Object();
+    private LocalDateTime localDateTime;
+    private int countRequests;
+
+
+    public CrptApi(TimeUnit timeUnit, int requestLimit) throws MalformedURLException {
+        this.timeUnit = timeUnit;
         this.requestLimit = requestLimit;
+        this.countRequests = 0;
+        this.localDateTime = LocalDateTime.now();
     }
 
     public void createDoc(RootProductPojo rootProductPojo) throws IOException {
+        // Если прошло времени больше чем timeUnit, то сбрасываем начало периода localDateTime в now() и обнуляем кол-во запросов countRequests
+        if ((Duration.between(localDateTime, LocalDateTime.now()).toNanos() - timeUnit.toNanos(1)) > 0) {
+            try {
+                synchronized (lock) {
+                    localDateTime = LocalDateTime.now();
+                    countRequests = 0;
+                    lock.notifyAll();
+                }
+            } catch (Exception e) {
+            }
+        }
+
+        try {
+            boolean ok = true;
+            synchronized (lock) {
+                ok = countRequests++ < requestLimit; // true - количество запросов в период времени не превышено
+            }
+            if (!ok) {
+                lock.wait(); // кол-во запросов превышено, ожидаем следующий период
+            }
+            doRequest(rootProductPojo);
+        } catch (Exception e) {
+        }
+    }
+
+    /**
+     *
+     * @param rootProductPojo - Pojo объект с описанием продукта, который преобразуется в JSON в теле запроса
+     * @throws IOException
+     */
+    private void doRequest(RootProductPojo rootProductPojo) throws IOException {
         CloseableHttpClient httpClient = HttpClients.createDefault();
 
         HttpPost httpPost = new HttpPost(CREATE_DOC_URL);
@@ -38,9 +80,7 @@ public class CrptApi {
         String jsonProduct = objectMapper.writeValueAsString(rootProductPojo);
 
         final List<NameValuePair> params = new ArrayList<>();
-        //params.add(new BasicNameValuePair("title", "foo"));
         params.add(new BasicNameValuePair("body", jsonProduct));
-        //params.add(new BasicNameValuePair("userId", "1"));
         httpPost.setEntity(new UrlEncodedFormEntity(params));
 
         try (
@@ -54,7 +94,6 @@ public class CrptApi {
             throw new RuntimeException(e);
         }
         httpClient.close();
-
     }
 
     // вспомогательный метод, подготавливающий вариант Pojo для JSON
