@@ -15,9 +15,10 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.springframework.scheduling.annotation.Scheduled;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.URL;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -35,7 +36,7 @@ public class CrptApi {
     private int countRequests;
 
 
-    public CrptApi(TimeUnit timeUnit, int requestLimit) throws MalformedURLException {
+    public CrptApi(TimeUnit timeUnit, int requestLimit) {
         this.timeUnit = timeUnit;
         this.requestLimit = requestLimit;
         this.countRequests = 0;
@@ -76,34 +77,32 @@ public class CrptApi {
         }
     }
 
-    /**
-     *
-     * @param rootProductPojo - Pojo объект с описанием продукта, который преобразуется в JSON в теле запроса
-     * @throws IOException
-     */
     private void doRequest(RootProductPojo rootProductPojo) throws IOException {
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-
-        HttpPost httpPost = new HttpPost(CREATE_DOC_URL);
+        URL url = new URL (CREATE_DOC_URL);
+        HttpURLConnection con = (HttpURLConnection)url.openConnection();
+        con.setRequestMethod("POST");
+        con.setRequestProperty("Content-Type", "application/json");
+        con.setRequestProperty("Accept", "application/json");
+        con.setDoOutput(true);
 
         ObjectMapper objectMapper = new ObjectMapper();
         String jsonProduct = objectMapper.writeValueAsString(rootProductPojo);
 
-        final List<NameValuePair> params = new ArrayList<>();
-        params.add(new BasicNameValuePair("body", jsonProduct));
-        httpPost.setEntity(new UrlEncodedFormEntity(params));
-
-        try (
-                CloseableHttpResponse response2 = httpClient.execute(httpPost)
-        ){
-            final HttpEntity entity2 = response2.getEntity();
-            System.out.println(EntityUtils.toString(entity2));
-        } catch (ClientProtocolException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        try(OutputStream os = con.getOutputStream()) {
+            byte[] input = jsonProduct.getBytes("utf-8");
+            os.write(input, 0, input.length);
         }
-        httpClient.close();
+
+        try(BufferedReader br = new BufferedReader(
+                new InputStreamReader(con.getInputStream(), "utf-8"))) {
+            StringBuilder response = new StringBuilder();
+            String responseLine = null;
+            while ((responseLine = br.readLine()) != null) {
+                response.append(responseLine.trim());
+            }
+            System.out.println(response.toString());
+        }
+
     }
 
     // вспомогательный метод, подготавливающий вариант Pojo для JSON
