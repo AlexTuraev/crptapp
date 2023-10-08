@@ -77,36 +77,6 @@ public class CrptApi {
         }
     }
 
-    /**
-     * @param rootProductPojo - Pojo объект с описанием продукта, который преобразуется в JSON в теле запроса
-     * @throws IOException
-     */
-    /*private void doRequest(RootProductPojo rootProductPojo) throws IOException {
-        CloseableHttpClient httpClient = HttpClients.createDefault();
-
-        HttpPost httpPost = new HttpPost(CREATE_DOC_URL);
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        String jsonProduct = objectMapper.writeValueAsString(rootProductPojo);
-
-        //final List<NameValuePair> params = new ArrayList<>();
-        final List<String> params = new ArrayList<>();
-        //params.add(new BasicNameValuePair("body", jsonProduct));
-        params.add(jsonProduct);
-        //httpPost.setEntity(new UrlEncodedFormEntity(params));
-
-        try (
-                CloseableHttpResponse response2 = httpClient.execute(httpPost)
-        ){
-            final HttpEntity entity2 = response2.getEntity();
-            System.out.println(EntityUtils.toString(entity2));
-        } catch (ClientProtocolException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        httpClient.close();
-    }*/
     private void doRequest(RootProductPojo rootProductPojo) throws IOException {
         URL url = new URL (CREATE_DOC_URL);
         HttpURLConnection con = (HttpURLConnection)url.openConnection();
